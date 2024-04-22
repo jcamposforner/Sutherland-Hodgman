@@ -30,12 +30,8 @@ impl Line {
         vector_edge.x * vector_vertex.y - vector_edge.y * vector_vertex.x
     }
 
-    fn is_left(&self, point: &Point) -> bool {
-        self.cross_product(point) >= 0.0
-    }
-
     fn is_inside(&self, point: &Point) -> bool {
-        (self.end.x - self.start.x) * (point.y - self.start.y) >= (self.end.y - self.start.y) * (point.x - self.start.x)
+        self.cross_product(point) >= 0.0
     }
 
     fn intersection(&self, other: &Line) -> Option<Point> {
@@ -119,6 +115,8 @@ impl Polygon {
 
             output_polygon = new_vertexes.clone();
         }
+
+        println!("{:?}", output_polygon);
 
         Polygon::new(output_polygon)
     }
