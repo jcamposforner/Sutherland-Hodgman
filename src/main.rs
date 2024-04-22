@@ -96,13 +96,11 @@ impl Polygon {
                     continue;
                 }
 
-                // BOTH INSIDE
                 if current_is_inside && next_is_inside {
                     new_vertexes.push(next_vertex.clone());
                     continue;
                 }
 
-                // CALCULATE INTERSECTION
                 let intersection_line = Line::new(current_vertex.clone(), next_vertex.clone());
                 let intersection = edge.intersection(&intersection_line);
 
@@ -110,12 +108,13 @@ impl Polygon {
                     if let Some(intersection) = intersection {
                         new_vertexes.push(intersection);
                     }
-                } else  {
-                    if let Some(intersection) = intersection {
-                        new_vertexes.push(intersection);
-                    }
-                    new_vertexes.push(next_vertex.clone());
+                    continue;
                 }
+
+                if let Some(intersection) = intersection {
+                    new_vertexes.push(intersection);
+                }
+                new_vertexes.push(next_vertex.clone());
             }
 
             output_polygon = new_vertexes.clone();
