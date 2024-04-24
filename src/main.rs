@@ -1,6 +1,6 @@
 use std::error::Error;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 struct Point {
     x: f64,
     y: f64,
@@ -56,7 +56,7 @@ impl Line {
             y >= f64::min(self.start.y, self.end.y) && y <= f64::max(self.start.y, self.end.y) &&
             x >= f64::min(other.start.x, other.end.x) && x <= f64::max(other.start.x, other.end.x) &&
             y >= f64::min(other.start.y, other.end.y) && y <= f64::max(other.start.y, other.end.y) {
-            Some(Point { x, y })
+            Some(Point::new(x, y))
         } else {
             None
         };
@@ -73,52 +73,102 @@ impl Polygon {
         Polygon { vertexes }
     }
 
-    fn clip_polygon(&self, input_polygon: &Polygon) -> Polygon {
+    fn clip_polygon(&self, input_polygon: &Polygon) -> Option<Polygon> {
         let mut output_polygon = input_polygon.vertexes.clone();
 
         for i in 0..self.vertexes.len() {
             let mut new_vertexes = vec![];
-
-            let edge_start = &self.vertexes[i];
-            let edge_end = &self.vertexes[(i + 1) % self.vertexes.len()];
-            let edge = Line::new(edge_start.clone(), edge_end.clone());
+            let clipping_start = &self.vertexes[i];
+            let clipping_end = &self.vertexes[(i + 1) % self.vertexes.len()];
+            let clipping_line = Line::new(*clipping_start, *clipping_end);
 
             for j in 0..output_polygon.len() {
                 let current_vertex = &output_polygon[j];
                 let next_vertex = &output_polygon[(j + 1) % output_polygon.len()];
-                let current_is_inside = edge.is_inside(current_vertex);
-                let next_is_inside = edge.is_inside(next_vertex);
-                if !current_is_inside && !next_is_inside {
-                    continue;
-                }
 
-                if current_is_inside && next_is_inside {
-                    new_vertexes.push(next_vertex.clone());
-                    continue;
-                }
+                let current_position = PointPosition::detect(*current_vertex, &clipping_line);
+                let next_position = PointPosition::detect(*next_vertex, &clipping_line);
 
-                let intersection_line = Line::new(current_vertex.clone(), next_vertex.clone());
-                let intersection = edge.intersection(&intersection_line);
-
-                if current_is_inside {
-                    if let Some(intersection) = intersection {
-                        new_vertexes.push(intersection);
-                    }
-                    continue;
-                }
-
-                if let Some(intersection) = intersection {
-                    new_vertexes.push(intersection);
-                }
-                new_vertexes.push(next_vertex.clone());
+                PointPositions::new(current_position, next_position)
+                    .calculate_vertexes(&clipping_line)
+                    .into_iter()
+                    .for_each(|vertex| new_vertexes.push(vertex));
             }
 
-            output_polygon = new_vertexes.clone();
+            output_polygon = new_vertexes;
         }
 
-        println!("{:?}", output_polygon);
+        if output_polygon.is_empty() {
+            return None;
+        }
 
-        Polygon::new(output_polygon)
+        Some(Polygon::new(output_polygon))
+    }
+}
+
+#[derive(Debug)]
+enum PointPosition {
+    Inside(Point),
+    Outside(Point),
+}
+
+impl PointPosition {
+    fn detect(point: Point, line: &Line) -> Self {
+        if line.is_inside(&point) {
+            PointPosition::Inside(point)
+        } else {
+            PointPosition::Outside(point)
+        }
+    }
+}
+
+struct PointPositions {
+    start: PointPosition,
+    end: PointPosition,
+}
+
+impl PointPositions {
+    fn new(start: PointPosition, end: PointPosition) -> Self {
+        PointPositions { start, end }
+    }
+
+    fn calculate_vertexes(self, line: &Line) -> Vec<Point> {
+        let mut vertexes = vec![];
+        match (self.start, self.end) {
+            (PointPosition::Inside(_), PointPosition::Inside(end)) => {
+                vertexes.push(end);
+            }
+            (PointPosition::Inside(start), PointPosition::Outside(end)) => {
+                Self::calculate_intersection(
+                    line,
+                    &Line::new(start, end),
+                    &mut vertexes,
+                );
+            }
+            (PointPosition::Outside(start), PointPosition::Inside(end)) => {
+                let intersection_line = Line::new(start, end);
+                Self::calculate_intersection(
+                    line,
+                    &intersection_line,
+                    &mut vertexes,
+                );
+
+                vertexes.push(intersection_line.end);
+            }
+            _ => {}
+        }
+
+        vertexes
+    }
+
+    fn calculate_intersection(
+        line: &Line,
+        intersection_line: &Line,
+        vertexes: &mut Vec<Point>) {
+        let intersection = line.intersection(&intersection_line);
+        if let Some(intersection) = intersection {
+            vertexes.push(intersection);
+        }
     }
 }
 
@@ -134,31 +184,24 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let clipping_polygon = Polygon::new(
         vec![
-            Point::new(100.0, 150.0),
-            Point::new(200.0, 250.0),
-            Point::new(300.0, 200.0),
+            Point::new(135.0, 195.0),
+            Point::new(170.0, 195.0),
+            Point::new(170.0, 185.0),
+            Point::new(190.0, 165.0),
+            Point::new(160.0, 160.0),
+            Point::new(150.0, 160.0),
+            Point::new(145.0, 155.0),
+            Point::new(140.0, 178.0),
+            Point::new(150.0, 175.0),
+            Point::new(145.0, 165.0),
+            Point::new(155.0, 170.0),
+            Point::new(155.0, 185.0),
+            Point::new(135.0, 190.0),
         ]
     );
 
     let result = square.clip_polygon(&clipping_polygon);
-
-    let square = Polygon::new(
-        vec![
-            Point::new(200.0, 100.0),
-            Point::new(300.0, 300.0),
-            Point::new(100.0, 300.0),
-        ]
-    );
-
-    let clipping_polygon = Polygon::new(
-        vec![
-            Point::new(100.0, 150.0),
-            Point::new(200.0, 250.0),
-            Point::new(300.0, 200.0),
-        ]
-    );
-
-    let result = square.clip_polygon(&clipping_polygon);
+    println!("{:#?}", result);
 
     Ok(())
 }
