@@ -243,7 +243,3 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-fn clip_polygon<C: ClippingStrategy>(polygon: &Polygon, clipping_polygon: &Polygon, strategy: &C) -> Option<Polygon> {
-    strategy.clip_polygon(polygon, clipping_polygon)
-}
