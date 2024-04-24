@@ -81,10 +81,6 @@ impl Polygon {
     fn new(vertexes: Vec<Point>) -> Self {
         Polygon { vertexes }
     }
-
-    fn clip_polygon(&self, input_polygon: &Polygon) -> Option<Polygon> {
-        SutherlandHodgman.clip_polygon(self, input_polygon)
-    }
 }
 
 #[derive(Debug)]
@@ -227,8 +223,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         ]
     );
 
-    let result = square.clip_polygon(&clipping_polygon);
+    let result = clip_polygon(&square, &clipping_polygon, &SutherlandHodgman);
     println!("{:#?}", result);
 
     Ok(())
+}
+
+fn clip_polygon<C: ClippingStrategy>(polygon: &Polygon, clipping_polygon: &Polygon, strategy: &C) -> Option<Polygon> {
+    strategy.clip_polygon(polygon, clipping_polygon)
 }
