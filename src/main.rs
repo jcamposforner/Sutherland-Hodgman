@@ -1,4 +1,5 @@
 use std::error::Error;
+use std::net::Shutdown;
 
 #[derive(Debug, Copy, Clone)]
 struct Point {
@@ -82,48 +83,7 @@ impl Polygon {
     }
 
     fn clip_polygon(&self, input_polygon: &Polygon) -> Option<Polygon> {
-        let mut output_polygon = input_polygon.vertexes.clone();
-
-        for i in 0..self.vertexes.len() {
-            let mut new_vertexes = vec![];
-            let clipping_start = &self.vertexes[i];
-            let clipping_end = &self.vertexes[(i + 1) % self.vertexes.len()];
-            let clipping_line = Line::new(*clipping_start, *clipping_end);
-
-            for j in 0..output_polygon.len() {
-                let start_point = &output_polygon[j];
-                let end_point = &output_polygon[(j + 1) % output_polygon.len()];
-
-                let current_position = PointPosition::is_inside(*start_point, &clipping_line);
-                let next_position = PointPosition::is_inside(*end_point, &clipping_line);
-
-                PointPositions::new(current_position, next_position)
-                    .calculate_vertexes(&clipping_line)
-                    .into_iter()
-                    .for_each(|vertex| new_vertexes.push(vertex));
-            }
-
-            output_polygon = new_vertexes;
-        }
-
-        if output_polygon.is_empty() {
-            return None;
-        }
-
-        let unique_points = Self::remove_duplicated_points(output_polygon);
-
-        Some(Polygon::new(unique_points))
-    }
-
-    fn remove_duplicated_points(output_polygon: Vec<Point>) -> Vec<Point> {
-        let mut unique_points: Vec<Point> = Vec::new();
-        for point in output_polygon {
-            if unique_points.last() != Some(&point) {
-                unique_points.push(point);
-            }
-        }
-
-        unique_points
+        SutherlandHodgman.clip_polygon(self, input_polygon)
     }
 }
 
@@ -192,6 +152,61 @@ impl PointPositions {
             vertexes.push(intersection);
         }
     }
+}
+
+struct SutherlandHodgman;
+
+impl SutherlandHodgman {
+    fn remove_duplicated_points(output_polygon: Vec<Point>) -> Vec<Point> {
+        let mut unique_points: Vec<Point> = Vec::new();
+        for point in output_polygon {
+            if unique_points.last() != Some(&point) {
+                unique_points.push(point);
+            }
+        }
+
+        unique_points
+    }
+}
+
+impl ClippingStrategy for SutherlandHodgman {
+    fn clip_polygon(&self, clipping_polygon: &Polygon, input_polygon: &Polygon) -> Option<Polygon> {
+        let mut output_polygon = input_polygon.vertexes.clone();
+
+        for i in 0..clipping_polygon.vertexes.len() {
+            let mut new_vertexes = vec![];
+            let clipping_start = &clipping_polygon.vertexes[i];
+            let clipping_end = &clipping_polygon.vertexes[(i + 1) % clipping_polygon.vertexes.len()];
+            let clipping_line = Line::new(*clipping_start, *clipping_end);
+
+            for j in 0..output_polygon.len() {
+                let start_point = &output_polygon[j];
+                let end_point = &output_polygon[(j + 1) % output_polygon.len()];
+
+                let current_position = PointPosition::is_inside(*start_point, &clipping_line);
+                let next_position = PointPosition::is_inside(*end_point, &clipping_line);
+
+                PointPositions::new(current_position, next_position)
+                    .calculate_vertexes(&clipping_line)
+                    .into_iter()
+                    .for_each(|vertex| new_vertexes.push(vertex));
+            }
+
+            output_polygon = new_vertexes;
+        }
+
+        if output_polygon.is_empty() {
+            return None;
+        }
+
+        let unique_points = Self::remove_duplicated_points(output_polygon);
+
+        Some(Polygon::new(unique_points))
+    }
+}
+
+trait ClippingStrategy {
+    fn clip_polygon(&self, clipping_polygon: &Polygon, input_polygon: &Polygon) -> Option<Polygon>;
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
