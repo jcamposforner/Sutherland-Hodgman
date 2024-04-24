@@ -6,6 +6,14 @@ struct Point {
     y: f64,
 }
 
+impl Eq for Point {}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
 impl Point {
     fn new(x: f64, y: f64) -> Self {
         Point { x, y }
@@ -102,7 +110,20 @@ impl Polygon {
             return None;
         }
 
-        Some(Polygon::new(output_polygon))
+        let unique_points = Self::remove_duplicated_points(output_polygon);
+
+        Some(Polygon::new(unique_points))
+    }
+
+    fn remove_duplicated_points(output_polygon: Vec<Point>) -> Vec<Point> {
+        let mut unique_points: Vec<Point> = Vec::new();
+        for point in output_polygon {
+            if unique_points.last() != Some(&point) {
+                unique_points.push(point);
+            }
+        }
+
+        unique_points
     }
 }
 
