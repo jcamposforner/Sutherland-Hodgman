@@ -83,11 +83,11 @@ impl Polygon {
             let clipping_line = Line::new(*clipping_start, *clipping_end);
 
             for j in 0..output_polygon.len() {
-                let current_vertex = &output_polygon[j];
-                let next_vertex = &output_polygon[(j + 1) % output_polygon.len()];
+                let start_point = &output_polygon[j];
+                let end_point = &output_polygon[(j + 1) % output_polygon.len()];
 
-                let current_position = PointPosition::detect(*current_vertex, &clipping_line);
-                let next_position = PointPosition::detect(*next_vertex, &clipping_line);
+                let current_position = PointPosition::is_inside(*start_point, &clipping_line);
+                let next_position = PointPosition::is_inside(*end_point, &clipping_line);
 
                 PointPositions::new(current_position, next_position)
                     .calculate_vertexes(&clipping_line)
@@ -113,7 +113,7 @@ enum PointPosition {
 }
 
 impl PointPosition {
-    fn detect(point: Point, line: &Line) -> Self {
+    fn is_inside(point: Point, line: &Line) -> Self {
         if line.is_inside(&point) {
             PointPosition::Inside(point)
         } else {
@@ -164,7 +164,8 @@ impl PointPositions {
     fn calculate_intersection(
         line: &Line,
         intersection_line: &Line,
-        vertexes: &mut Vec<Point>) {
+        vertexes: &mut Vec<Point>,
+    ) {
         let intersection = line.intersection(&intersection_line);
         if let Some(intersection) = intersection {
             vertexes.push(intersection);
@@ -184,19 +185,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let clipping_polygon = Polygon::new(
         vec![
-            Point::new(135.0, 195.0),
-            Point::new(170.0, 195.0),
-            Point::new(170.0, 185.0),
-            Point::new(190.0, 165.0),
-            Point::new(160.0, 160.0),
-            Point::new(150.0, 160.0),
-            Point::new(145.0, 155.0),
-            Point::new(140.0, 178.0),
-            Point::new(150.0, 175.0),
-            Point::new(145.0, 165.0),
-            Point::new(155.0, 170.0),
-            Point::new(155.0, 185.0),
-            Point::new(135.0, 190.0),
+            Point::new(100.0, 150.0),
+            Point::new(200.0, 250.0),
+            Point::new(300.0, 200.0),
         ]
     );
 
