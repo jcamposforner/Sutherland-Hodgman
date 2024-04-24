@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::net::Shutdown;
 
 #[derive(Debug, Copy, Clone)]
 struct Point {
@@ -205,6 +204,20 @@ trait ClippingStrategy {
     fn clip_polygon(&self, clipping_polygon: &Polygon, input_polygon: &Polygon) -> Option<Polygon>;
 }
 
+struct PolygonClippingCalculator<'a, C: ClippingStrategy> {
+    strategy: &'a C,
+}
+
+impl<'a, C: ClippingStrategy> PolygonClippingCalculator<'a, C> {
+    fn new(strategy: &'a C) -> Self {
+        Self { strategy }
+    }
+
+    fn clip_polygon(&self, polygon: &Polygon, clipping_polygon: &Polygon) -> Option<Polygon> {
+        self.strategy.clip_polygon(polygon, clipping_polygon)
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let square = Polygon::new(
         vec![
@@ -223,7 +236,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         ]
     );
 
-    let result = clip_polygon(&square, &clipping_polygon, &SutherlandHodgman);
+    let hodgman = SutherlandHodgman;
+    let calculator = PolygonClippingCalculator::new(&hodgman);
+    let result = calculator.clip_polygon(&square, &clipping_polygon);
     println!("{:#?}", result);
 
     Ok(())
